@@ -1,0 +1,65 @@
+name: dAIry
+options:
+  bundleIdPrefix: com.dairy
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "15.0"
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    INFOPLIST_FILE: dAIry/Info.plist
+
+packages:
+  SwiftCheck:
+    url: https://github.com/typelift/SwiftCheck.git
+    from: "0.12.0"
+  generative-ai-swift:
+    url: https://github.com/google-gemini/generative-ai-swift.git
+    from: "0.5.6"
+
+targets:
+  dAIry:
+    type: application
+    platform: iOS
+    sources:
+      - path: dAIry
+        excludes:
+          - Info.plist
+    dependencies:
+      - package: generative-ai-swift
+        product: GoogleGenerativeAI
+    info:
+      path: dAIry/Info.plist
+      properties:
+        NSPhotoLibraryUsageDescription: "dAIry needs access to your photo library to include your photos in daily diary entries."
+        NSHealthShareUsageDescription: "dAIry needs access to your health data to include fitness activity in your daily diary entries."
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.dairy.dailyCollection
+        UILaunchScreen: {}
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dairy.dAIry
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: false
+    entitlements:
+      path: dAIry/dAIry.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access:
+          - health-records
+
+  dAIryTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: dAIryTests
+    dependencies:
+      - target: dAIry
+      - package: SwiftCheck
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dairy.dAIryTests
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/dAIry.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/dAIry"
+        BUNDLE_LOADER: "$(TEST_HOST)"
