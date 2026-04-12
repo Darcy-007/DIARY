@@ -102,8 +102,7 @@ final class DataCollector: DataCollecting {
 
         let photoStatus = permissionManager.currentStatus(for: .photos)
         let healthStatus = permissionManager.currentStatus(for: .healthKit)
-        let locationStatus = permissionManager.currentStatus(for: .location)
-        print("[dAIry] Permission statuses — photos: \(photoStatus), healthKit: \(healthStatus), location: \(locationStatus)")
+        print("[dAIry] Permission statuses — photos: \(photoStatus), healthKit: \(healthStatus)")
 
         if photoStatus == .authorized {
             do {
@@ -127,11 +126,12 @@ final class DataCollector: DataCollecting {
             print("[dAIry] Skipping health — status: \(healthStatus)")
         }
 
-        if locationStatus == .authorized, let tracker = locationTracker {
+        if let tracker = locationTracker,
+           (tracker.authorizationStatus == .authorizedAlways || tracker.authorizationStatus == .authorizedWhenInUse) {
             locationVisits = tracker.visits(for: window)
             print("[dAIry] Collected \(locationVisits.count) location visits")
         } else {
-            print("[dAIry] Skipping location — status: \(locationStatus)")
+            print("[dAIry] Skipping location — tracker: \(locationTracker != nil), auth: \(locationTracker?.authorizationStatus.rawValue ?? -1)")
         }
 
         return CollectedData(window: window, photos: photos, health: health, locationVisits: locationVisits)

@@ -26,6 +26,15 @@
 	<string>dAIry needs access to your health data to include fitness activity in your daily diary entries.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>dAIry needs access to your photo library to include your photos in daily diary entries.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>dAIry uses your location to include places you visited in your diary entries.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>dAIry tracks your location throughout the day to include places you visited in your diary entries.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>processing</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
 </dict>

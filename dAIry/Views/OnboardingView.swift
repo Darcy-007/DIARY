@@ -111,7 +111,10 @@ struct OnboardingView: View {
             if !locationRequested {
                 Button {
                     locationTracker.requestPermission()
-                    locationRequested = true
+                    // Small delay to let the system dialog appear
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        locationRequested = true
+                    }
                 } label: {
                     Text("Allow Location Access").frame(maxWidth: .infinity)
                 }.buttonStyle(.borderedProminent).controlSize(.large)

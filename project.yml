@@ -35,8 +35,13 @@ targets:
       properties:
         NSPhotoLibraryUsageDescription: "dAIry needs access to your photo library to include your photos in daily diary entries."
         NSHealthShareUsageDescription: "dAIry needs access to your health data to include fitness activity in your daily diary entries."
+        NSLocationWhenInUseUsageDescription: "dAIry uses your location to include places you visited in your diary entries."
+        NSLocationAlwaysAndWhenInUseUsageDescription: "dAIry tracks your location throughout the day to include places you visited in your diary entries."
         BGTaskSchedulerPermittedIdentifiers:
           - com.dairy.dailyCollection
+        UIBackgroundModes:
+          - location
+          - processing
         UILaunchScreen: {}
     settings:
       base:
