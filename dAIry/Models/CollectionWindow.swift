@@ -10,8 +10,15 @@ struct CollectedData {
     let window: CollectionWindow
     let photos: [PhotoData]
     let health: HealthData?
-    let transactions: [TransactionData]
-    var isEmpty: Bool { photos.isEmpty && health == nil && transactions.isEmpty }
+    let locationVisits: [LocationVisit]
+    var isEmpty: Bool { photos.isEmpty && health == nil && locationVisits.isEmpty }
+
+    init(window: CollectionWindow, photos: [PhotoData], health: HealthData?, locationVisits: [LocationVisit] = []) {
+        self.window = window
+        self.photos = photos
+        self.health = health
+        self.locationVisits = locationVisits
+    }
 }
 
 extension CollectionWindow {

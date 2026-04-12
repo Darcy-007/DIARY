@@ -66,7 +66,7 @@ struct CollectionWindowTests {
     @Test("CollectedData isEmpty when all sources empty")
     func collectedDataIsEmpty() {
         let window = CollectionWindow.today()
-        let data = CollectedData(window: window, photos: [], health: nil, transactions: [])
+        let data = CollectedData(window: window, photos: [], health: nil)
         #expect(data.isEmpty)
     }
 
@@ -74,7 +74,7 @@ struct CollectionWindowTests {
     func collectedDataNotEmptyWithHealth() {
         let window = CollectionWindow.today()
         let health = HealthData(stepCount: 100, walkingRunningDistance: 50, activeEnergyBurned: 10)
-        let data = CollectedData(window: window, photos: [], health: health, transactions: [])
+        let data = CollectedData(window: window, photos: [], health: health)
         #expect(!data.isEmpty)
     }
 }

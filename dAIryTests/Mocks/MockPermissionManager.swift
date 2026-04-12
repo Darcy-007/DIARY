@@ -5,7 +5,6 @@ final class MockPermissionManager: PermissionManaging {
     var statuses: [DataSource: AuthorizationStatus] = [:]
     var photoAccessResult: AuthorizationStatus = .authorized
     var healthKitAccessResult: AuthorizationStatus = .authorized
-    var transactionAccessResult: AuthorizationStatus = .authorized
     var refreshCalled = false
 
     func requestPhotoAccess() async -> AuthorizationStatus {
@@ -16,11 +15,6 @@ final class MockPermissionManager: PermissionManaging {
     func requestHealthKitAccess() async -> AuthorizationStatus {
         statuses[.healthKit] = healthKitAccessResult
         return healthKitAccessResult
-    }
-
-    func requestTransactionAccess() async -> AuthorizationStatus {
-        statuses[.transactions] = transactionAccessResult
-        return transactionAccessResult
     }
 
     func currentStatus(for source: DataSource) -> AuthorizationStatus {

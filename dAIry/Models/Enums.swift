@@ -3,7 +3,7 @@ import Foundation
 enum DataSource: String, CaseIterable, Codable {
     case photos
     case healthKit
-    case transactions
+    case location
 }
 
 enum AuthorizationStatus: String, Codable {

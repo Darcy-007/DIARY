@@ -8,7 +8,7 @@ class DiaryEntry {
     var text: String
     var photoReferences: [PhotoReference]
     var healthSummary: HealthSummary?
-    var transactionSummary: [TransactionSummary]
+    var locationSummary: LocationSummary?
     var createdAt: Date
     var isSupplemental: Bool
 
@@ -18,7 +18,7 @@ class DiaryEntry {
         text: String,
         photoReferences: [PhotoReference] = [],
         healthSummary: HealthSummary? = nil,
-        transactionSummary: [TransactionSummary] = [],
+        locationSummary: LocationSummary? = nil,
         createdAt: Date = Date(),
         isSupplemental: Bool = false
     ) {
@@ -27,7 +27,7 @@ class DiaryEntry {
         self.text = text
         self.photoReferences = photoReferences
         self.healthSummary = healthSummary
-        self.transactionSummary = transactionSummary
+        self.locationSummary = locationSummary
         self.createdAt = createdAt
         self.isSupplemental = isSupplemental
     }

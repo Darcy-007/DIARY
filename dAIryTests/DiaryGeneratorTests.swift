@@ -25,7 +25,7 @@ struct DiaryGeneratorTests {
             PhotoData(assetIdentifier: "p1", captureDate: Date(), location: nil, caption: nil),
             PhotoData(assetIdentifier: "p2", captureDate: Date(), location: nil, caption: "Beach")
         ]
-        let data = CollectedData(window: window, photos: photos, health: nil, transactions: [])
+        let data = CollectedData(window: window, photos: photos, health: nil)
         let prompt = generator.buildPrompt(from: data)
         #expect(prompt.contains("2 photos"))
     }
@@ -36,24 +36,10 @@ struct DiaryGeneratorTests {
         let generator = DiaryGenerator(apiKeyManager: apiKeyManager)
         let window = makeWindow()
         let health = HealthData(stepCount: 8000, walkingRunningDistance: 6000, activeEnergyBurned: 300)
-        let data = CollectedData(window: window, photos: [], health: health, transactions: [])
+        let data = CollectedData(window: window, photos: [], health: health)
         let prompt = generator.buildPrompt(from: data)
         #expect(prompt.contains("8000 steps"))
         #expect(prompt.contains("300 kcal"))
-    }
-
-    @Test("buildPrompt includes transaction details")
-    func promptIncludesTransactions() {
-        let apiKeyManager = MockAPIKeyManager()
-        let generator = DiaryGenerator(apiKeyManager: apiKeyManager)
-        let window = makeWindow()
-        let txs = [
-            TransactionData(merchantName: "Starbucks", amount: 5.50, date: Date())
-        ]
-        let data = CollectedData(window: window, photos: [], health: nil, transactions: txs)
-        let prompt = generator.buildPrompt(from: data)
-        #expect(prompt.contains("1 transactions"))
-        #expect(prompt.contains("Starbucks"))
     }
 
     @Test("buildPrompt includes photo caption when present")
@@ -64,7 +50,7 @@ struct DiaryGeneratorTests {
         let photos = [
             PhotoData(assetIdentifier: "p1", captureDate: Date(), location: nil, caption: "Sunset view")
         ]
-        let data = CollectedData(window: window, photos: photos, health: nil, transactions: [])
+        let data = CollectedData(window: window, photos: photos, health: nil)
         let prompt = generator.buildPrompt(from: data)
         #expect(prompt.contains("Sunset view"))
     }
@@ -75,7 +61,7 @@ struct DiaryGeneratorTests {
         let generator = DiaryGenerator(apiKeyManager: apiKeyManager)
         let window = makeWindow()
         let health = HealthData(stepCount: 100, walkingRunningDistance: 50, activeEnergyBurned: 10)
-        let data = CollectedData(window: window, photos: [], health: health, transactions: [])
+        let data = CollectedData(window: window, photos: [], health: health)
         let prompt = generator.buildPrompt(from: data)
         #expect(prompt.contains("Write a first-person diary entry"))
     }
@@ -88,7 +74,7 @@ struct DiaryGeneratorTests {
         apiKeyManager.storedKey = "test-key"
         let generator = DiaryGenerator(apiKeyManager: apiKeyManager)
         let window = makeWindow()
-        let data = CollectedData(window: window, photos: [], health: nil, transactions: [])
+        let data = CollectedData(window: window, photos: [], health: nil)
 
         do {
             _ = try await generator.generate(from: data)
@@ -107,7 +93,7 @@ struct DiaryGeneratorTests {
         let mockGenerator = MockDiaryGenerator()
         let window = makeWindow()
         let health = HealthData(stepCount: 100, walkingRunningDistance: 50, activeEnergyBurned: 10)
-        let data = CollectedData(window: window, photos: [], health: health, transactions: [])
+        let data = CollectedData(window: window, photos: [], health: health)
         let entry = try await mockGenerator.generate(from: data)
         #expect(entry.date == window.date)
     }
@@ -121,7 +107,7 @@ struct DiaryGeneratorTests {
         let generator = DiaryGenerator(apiKeyManager: apiKeyManager)
         let window = makeWindow()
         let health = HealthData(stepCount: 100, walkingRunningDistance: 50, activeEnergyBurned: 10)
-        let data = CollectedData(window: window, photos: [], health: health, transactions: [])
+        let data = CollectedData(window: window, photos: [], health: health)
 
         do {
             _ = try await generator.generate(from: data)
@@ -140,7 +126,7 @@ struct DiaryGeneratorTests {
         let generator = DiaryGenerator(apiKeyManager: apiKeyManager)
         let window = makeWindow()
         let health = HealthData(stepCount: 100, walkingRunningDistance: 50, activeEnergyBurned: 10)
-        let data = CollectedData(window: window, photos: [], health: health, transactions: [])
+        let data = CollectedData(window: window, photos: [], health: health)
 
         // This will fail at the network call (no real API), but it should NOT throw apiKeyNotConfigured
         do {

@@ -1,7 +1,9 @@
 import SwiftUI
 import SwiftData
 
+#if !TESTING
 @main
+#endif
 struct dAIryApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([

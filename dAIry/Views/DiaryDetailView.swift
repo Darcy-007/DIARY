@@ -51,11 +51,6 @@ struct DiaryDetailView: View {
                 if let health = entry.healthSummary {
                     healthSection(health)
                 }
-
-                // Transaction summary
-                if !entry.transactionSummary.isEmpty {
-                    transactionsSection
-                }
             }
             .padding()
         }
@@ -138,23 +133,6 @@ struct DiaryDetailView: View {
                 .foregroundStyle(.secondary)
         }
         .frame(minWidth: 70)
-    }
-
-    private var transactionsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("Transactions", systemImage: "creditcard")
-                .font(.headline)
-
-            ForEach(entry.transactionSummary, id: \.merchantName) { tx in
-                HStack {
-                    Text(tx.merchantName)
-                        .font(.subheadline)
-                    Spacer()
-                    Text(tx.amount, format: .currency(code: "USD"))
-                        .font(.subheadline.weight(.medium))
-                }
-            }
-        }
     }
 
     // MARK: - Actions

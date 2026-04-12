@@ -18,12 +18,7 @@ struct DiaryListView: View {
     @State private var showConflictAlert: Bool = false
     @State private var generationError: String?
     @State private var showErrorAlert: Bool = false
-
-    // MARK: - Computed
-
-    private var isKeyConfigured: Bool {
-        apiKeyManager.isKeyConfigured()
-    }
+    @State private var isKeyConfigured: Bool = false
 
     // MARK: - Body
 
@@ -105,6 +100,7 @@ struct DiaryListView: View {
             }
             .onAppear {
                 refreshEntries()
+                isKeyConfigured = apiKeyManager.isKeyConfigured()
             }
         }
     }

@@ -32,11 +32,8 @@ final class PermissionPropertyTests: XCTestCase {
                 permissionManager.photoAccessResult = .authorized
             case .healthKit:
                 permissionManager.healthKitAccessResult = .authorized
-            case .transactions:
-                permissionManager.transactionAccessResult = .authorized
             }
 
-            // Simulate requesting access
             let semaphore = DispatchSemaphore(value: 0)
             var grantedStatus: AuthorizationStatus = .notDetermined
             Task {
@@ -45,8 +42,6 @@ final class PermissionPropertyTests: XCTestCase {
                     grantedStatus = await permissionManager.requestPhotoAccess()
                 case .healthKit:
                     grantedStatus = await permissionManager.requestHealthKitAccess()
-                case .transactions:
-                    grantedStatus = await permissionManager.requestTransactionAccess()
                 }
                 semaphore.signal()
             }

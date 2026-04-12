@@ -4,7 +4,6 @@ import Foundation
 final class MockDataCollector: DataCollecting {
     var photosResult: [PhotoData] = []
     var healthResult: HealthData = HealthData(stepCount: 0, walkingRunningDistance: 0, activeEnergyBurned: 0)
-    var transactionsResult: [TransactionData] = []
     var collectAllResult: CollectedData?
     var shouldThrow = false
     var lastWindow: CollectionWindow?
@@ -21,12 +20,6 @@ final class MockDataCollector: DataCollecting {
         return healthResult
     }
 
-    func collectTransactions(for window: CollectionWindow) async throws -> [TransactionData] {
-        lastWindow = window
-        if shouldThrow { throw NSError(domain: "MockDataCollector", code: 3) }
-        return transactionsResult
-    }
-
     func collectAll(for window: CollectionWindow) async throws -> CollectedData {
         lastWindow = window
         if shouldThrow { throw NSError(domain: "MockDataCollector", code: 4) }
@@ -34,8 +27,7 @@ final class MockDataCollector: DataCollecting {
         return CollectedData(
             window: window,
             photos: photosResult,
-            health: healthResult.stepCount == 0 && healthResult.walkingRunningDistance == 0 && healthResult.activeEnergyBurned == 0 ? nil : healthResult,
-            transactions: transactionsResult
+            health: healthResult.stepCount == 0 && healthResult.walkingRunningDistance == 0 && healthResult.activeEnergyBurned == 0 ? nil : healthResult
         )
     }
 }

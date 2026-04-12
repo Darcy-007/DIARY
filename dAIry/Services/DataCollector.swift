@@ -1,7 +1,6 @@
 import Foundation
 import Photos
 import HealthKit
-import PassKit
 import CoreLocation
 #if canImport(UIKit)
 import UIKit
@@ -9,17 +8,16 @@ import UIKit
 
 final class DataCollector: DataCollecting {
 
-    // MARK: - Dependencies
-
     private let permissionManager: PermissionManaging
     private let healthStore: HKHealthStore
-
-    // MARK: - Init
+    private let locationTracker: LocationTracker?
 
     init(permissionManager: PermissionManaging,
-         healthStore: HKHealthStore = HKHealthStore()) {
+         healthStore: HKHealthStore = HKHealthStore(),
+         locationTracker: LocationTracker? = nil) {
         self.permissionManager = permissionManager
         self.healthStore = healthStore
+        self.locationTracker = locationTracker
     }
 
     // MARK: - Photo Collection
@@ -36,7 +34,6 @@ final class DataCollector: DataCollecting {
         let assets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
 
         var photos: [PhotoData] = []
-        // Limit to 10 photos to keep API payload reasonable
         let maxPhotos = min(assets.count, 10)
         for i in 0..<maxPhotos {
             let asset = assets.object(at: i)
@@ -51,25 +48,19 @@ final class DataCollector: DataCollecting {
             )
             photos.append(photo)
         }
-
         return photos
     }
 
-    /// Fetches a compressed JPEG thumbnail for a PHAsset.
     private func fetchImageData(for asset: PHAsset) async -> Data? {
         await withCheckedContinuation { continuation in
             let options = PHImageRequestOptions()
             options.isSynchronous = false
             options.deliveryMode = .highQualityFormat
             options.resizeMode = .exact
-
-            // Request a reasonably sized image (800px) to keep payload small
             let targetSize = CGSize(width: 800, height: 800)
             PHImageManager.default().requestImage(
-                for: asset,
-                targetSize: targetSize,
-                contentMode: .aspectFit,
-                options: options
+                for: asset, targetSize: targetSize,
+                contentMode: .aspectFit, options: options
             ) { image, _ in
                 #if canImport(UIKit)
                 let data = image?.jpegData(compressionQuality: 0.6)
@@ -84,53 +75,17 @@ final class DataCollector: DataCollecting {
     // MARK: - Health Data Collection
 
     func collectHealth(for window: CollectionWindow) async throws -> HealthData {
-        let stepCount = try await queryStatistics(
-            for: HKQuantityType(.stepCount),
-            unit: .count(),
-            start: window.start,
-            end: window.end
-        )
-        let distance = try await queryStatistics(
-            for: HKQuantityType(.distanceWalkingRunning),
-            unit: .meter(),
-            start: window.start,
-            end: window.end
-        )
-        let energy = try await queryStatistics(
-            for: HKQuantityType(.activeEnergyBurned),
-            unit: .kilocalorie(),
-            start: window.start,
-            end: window.end
-        )
-
-        return HealthData(
-            stepCount: Int(stepCount),
-            walkingRunningDistance: distance,
-            activeEnergyBurned: energy
-        )
+        let stepCount = try await queryStatistics(for: HKQuantityType(.stepCount), unit: .count(), start: window.start, end: window.end)
+        let distance = try await queryStatistics(for: HKQuantityType(.distanceWalkingRunning), unit: .meter(), start: window.start, end: window.end)
+        let energy = try await queryStatistics(for: HKQuantityType(.activeEnergyBurned), unit: .kilocalorie(), start: window.start, end: window.end)
+        return HealthData(stepCount: Int(stepCount), walkingRunningDistance: distance, activeEnergyBurned: energy)
     }
 
-    private func queryStatistics(
-        for quantityType: HKQuantityType,
-        unit: HKUnit,
-        start: Date,
-        end: Date
-    ) async throws -> Double {
+    private func queryStatistics(for quantityType: HKQuantityType, unit: HKUnit, start: Date, end: Date) async throws -> Double {
         try await withCheckedThrowingContinuation { continuation in
-            let predicate = HKQuery.predicateForSamples(
-                withStart: start,
-                end: end,
-                options: .strictStartDate
-            )
-            let query = HKStatisticsQuery(
-                quantityType: quantityType,
-                quantitySamplePredicate: predicate,
-                options: .cumulativeSum
-            ) { _, statistics, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
-                }
+            let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+            let query = HKStatisticsQuery(quantityType: quantityType, quantitySamplePredicate: predicate, options: .cumulativeSum) { _, statistics, error in
+                if let error { continuation.resume(throwing: error); return }
                 let value = statistics?.sumQuantity()?.doubleValue(for: unit) ?? 0.0
                 continuation.resume(returning: value)
             }
@@ -138,94 +93,47 @@ final class DataCollector: DataCollecting {
         }
     }
 
-    // MARK: - Transaction Collection
-
-    func collectTransactions(for window: CollectionWindow) async throws -> [TransactionData] {
-        let passLibrary = PKPassLibrary()
-        let passes = passLibrary.passes()
-
-        let paymentPasses = passes.filter { pass in
-            pass.passType == .payment
-        }
-
-        let transactions: [TransactionData] = paymentPasses.compactMap { pass in
-            guard let relevantDate = pass.relevantDate,
-                  relevantDate >= window.start,
-                  relevantDate < window.end else {
-                return nil
-            }
-
-            let merchantName = pass.organizationName
-            // PassKit does not expose transaction amounts directly;
-            // use 0 as a placeholder when unavailable.
-            let amount: Decimal = 0
-
-            return TransactionData(
-                merchantName: merchantName,
-                amount: amount,
-                date: relevantDate
-            )
-        }
-
-        return transactions
-    }
-
     // MARK: - Collect All
 
     func collectAll(for window: CollectionWindow) async throws -> CollectedData {
         var photos: [PhotoData] = []
         var health: HealthData? = nil
-        var transactions: [TransactionData] = []
+        var locationVisits: [LocationVisit] = []
 
         let photoStatus = permissionManager.currentStatus(for: .photos)
         let healthStatus = permissionManager.currentStatus(for: .healthKit)
-        let txStatus = permissionManager.currentStatus(for: .transactions)
-        print("[dAIry] Permission statuses — photos: \(photoStatus), healthKit: \(healthStatus), transactions: \(txStatus)")
+        let locationStatus = permissionManager.currentStatus(for: .location)
+        print("[dAIry] Permission statuses — photos: \(photoStatus), healthKit: \(healthStatus), location: \(locationStatus)")
 
-        // Photo collection — skip if not authorized
         if photoStatus == .authorized {
             do {
                 photos = try await collectPhotos(for: window)
                 print("[dAIry] Collected \(photos.count) photos")
             } catch {
                 print("[dAIry] Photo collection error: \(error)")
-                photos = []
             }
         } else {
             print("[dAIry] Skipping photos — status: \(photoStatus)")
         }
 
-        // Health data collection — skip if not authorized
         if healthStatus == .authorized {
             do {
                 health = try await collectHealth(for: window)
                 print("[dAIry] Collected health — steps: \(health?.stepCount ?? 0)")
             } catch {
                 print("[dAIry] Health collection error: \(error)")
-                health = nil
             }
         } else {
             print("[dAIry] Skipping health — status: \(healthStatus)")
         }
 
-        // Transaction collection — skip if not authorized
-        if txStatus == .authorized {
-            do {
-                transactions = try await collectTransactions(for: window)
-                print("[dAIry] Collected \(transactions.count) transactions")
-            } catch {
-                print("[dAIry] Transaction collection error: \(error)")
-                transactions = []
-            }
+        if locationStatus == .authorized, let tracker = locationTracker {
+            locationVisits = tracker.visits(for: window)
+            print("[dAIry] Collected \(locationVisits.count) location visits")
         } else {
-            print("[dAIry] Skipping transactions — status: \(txStatus)")
+            print("[dAIry] Skipping location — status: \(locationStatus)")
         }
 
-        return CollectedData(
-            window: window,
-            photos: photos,
-            health: health,
-            transactions: transactions
-        )
+        return CollectedData(window: window, photos: photos, health: health, locationVisits: locationVisits)
     }
 }

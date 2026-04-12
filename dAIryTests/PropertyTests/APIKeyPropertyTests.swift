@@ -84,8 +84,7 @@ final class APIKeyPropertyTests: XCTestCase {
             let data = CollectedData(
                 window: window,
                 photos: [PhotoData(assetIdentifier: "p1", captureDate: now, location: nil, caption: nil)],
-                health: nil,
-                transactions: []
+                health: nil
             )
 
             let semaphore = DispatchSemaphore(value: 0)

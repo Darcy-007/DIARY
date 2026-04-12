@@ -61,7 +61,6 @@ final class DiaryGenerator: DiaryGenerating {
         print("[dAIry] === Generating Diary ===")
         print("[dAIry] Photos: \(data.photos.count) (with image data: \(data.photos.filter { $0.imageData != nil }.count))")
         print("[dAIry] Health: \(data.health != nil ? "steps=\(data.health!.stepCount), dist=\(data.health!.walkingRunningDistance)m, energy=\(data.health!.activeEnergyBurned)kcal" : "nil")")
-        print("[dAIry] Transactions: \(data.transactions.count)")
         print("[dAIry] isEmpty: \(data.isEmpty)")
 
         let prompt = buildPrompt(from: data)
@@ -90,9 +89,7 @@ final class DiaryGenerator: DiaryGenerating {
                     activeEnergyBurnedKcal: $0.activeEnergyBurned
                 )
             },
-            transactionSummary: data.transactions.map {
-                TransactionSummary(merchantName: $0.merchantName, amount: $0.amount, date: $0.date)
-            }
+            locationSummary: data.locationVisits.isEmpty ? nil : LocationSummary(visits: data.locationVisits)
         )
     }
 
@@ -102,7 +99,7 @@ final class DiaryGenerator: DiaryGenerating {
         var sections: [String] = []
 
         if data.isEmpty {
-            sections.append("No photos, health data, or transactions were recorded today.")
+            sections.append("No photos, health data, or location data were recorded today.")
         }
 
         if !data.photos.isEmpty {
@@ -133,13 +130,17 @@ final class DiaryGenerator: DiaryGenerating {
             )
         }
 
-        if !data.transactions.isEmpty {
-            var txSection = "You made \(data.transactions.count) transactions:"
-            let details = data.transactions.map { tx in
-                "- \(tx.merchantName): $\(tx.amount)"
+        if !data.locationVisits.isEmpty {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .none
+            formatter.timeStyle = .short
+
+            var locSection = "You visited \(data.locationVisits.count) locations today. Use the coordinates to infer what places you might have been (e.g., home, office, restaurant, park, gym):"
+            let details = data.locationVisits.map { visit in
+                "- At \(formatter.string(from: visit.timestamp)): (\(String(format: "%.4f", visit.latitude)), \(String(format: "%.4f", visit.longitude)))"
             }
-            txSection += "\n" + details.joined(separator: "\n")
-            sections.append(txSection)
+            locSection += "\n" + details.joined(separator: "\n")
+            sections.append(locSection)
         }
 
         sections.append("Write a first-person diary entry for today based on this data. If no data was recorded, write a short, lighthearted entry about having a quiet uneventful day where you did nothing notable — something like \"today was not so fruitful and I literally did nothing\".")

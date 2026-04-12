@@ -15,14 +15,12 @@ struct DataCollectorTests {
         let pm = MockPermissionManager()
         pm.statuses[.photos] = .denied
         pm.statuses[.healthKit] = .denied
-        pm.statuses[.transactions] = .denied
 
         let collector = MockDataCollector()
         let window = CollectionWindow.today()
         let data = try await collector.collectAll(for: window)
         #expect(data.photos.isEmpty)
         #expect(data.health == nil)
-        #expect(data.transactions.isEmpty)
     }
 
     @Test("collectAll returns photos when source has data")
@@ -87,15 +85,6 @@ struct DataCollectorTests {
         #expect(photo.captureDate == date)
         #expect(photo.location == nil)
         #expect(photo.caption == "Sunset")
-    }
-
-    @Test("TransactionData preserves all fields")
-    func transactionDataPreservesFields() {
-        let date = Date()
-        let tx = TransactionData(merchantName: "Coffee Shop", amount: 4.50, date: date)
-        #expect(tx.merchantName == "Coffee Shop")
-        #expect(tx.amount == 4.50)
-        #expect(tx.date == date)
     }
 
     // MARK: - 12.4: HealthData aggregation with known sample sets

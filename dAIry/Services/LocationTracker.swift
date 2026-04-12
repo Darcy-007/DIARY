@@ -1,0 +1,113 @@
+import Foundation
+import CoreLocation
+
+final class LocationTracker: NSObject, ObservableObject, CLLocationManagerDelegate {
+
+    private let locationManager = CLLocationManager()
+    private let userDefaults: UserDefaults
+
+    private let visitsKey = "locationVisits"
+
+    @Published var isTracking = false
+
+    init(userDefaults: UserDefaults = .standard) {
+        self.userDefaults = userDefaults
+        super.init()
+        locationManager.delegate = self
+        locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+        locationManager.distanceFilter = 100 // Log every 100m movement
+    }
+
+    // MARK: - Permission
+
+    func requestPermission() {
+        locationManager.requestAlwaysAuthorization()
+    }
+
+    var authorizationStatus: CLAuthorizationStatus {
+        locationManager.authorizationStatus
+    }
+
+    // MARK: - Tracking
+
+    func startTracking() {
+        // Only enable background updates if "Always" authorization is granted
+        if locationManager.authorizationStatus == .authorizedAlways {
+            locationManager.allowsBackgroundLocationUpdates = true
+            locationManager.pausesLocationUpdatesAutomatically = false
+        }
+        locationManager.startUpdatingLocation()
+        locationManager.startMonitoringSignificantLocationChanges()
+        isTracking = true
+        print("[dAIry] Location tracking started (background: \(locationManager.authorizationStatus == .authorizedAlways))")
+    }
+
+    func stopTracking() {
+        locationManager.stopUpdatingLocation()
+        locationManager.stopMonitoringSignificantLocationChanges()
+        isTracking = false
+    }
+
+    // MARK: - Fetch visits for a CollectionWindow
+
+    func visits(for window: CollectionWindow) -> [LocationVisit] {
+        let allVisits = loadVisits()
+        return allVisits.filter { $0.timestamp >= window.start && $0.timestamp < window.end }
+    }
+
+    // MARK: - Clear old data
+
+    func clearVisits(before date: Date) {
+        var visits = loadVisits()
+        visits.removeAll { $0.timestamp < date }
+        saveVisits(visits)
+    }
+
+    // MARK: - CLLocationManagerDelegate
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        var visits = loadVisits()
+        for location in locations {
+            let visit = LocationVisit(
+                coordinate: location.coordinate,
+                timestamp: location.timestamp,
+                horizontalAccuracy: location.horizontalAccuracy
+            )
+            visits.append(visit)
+            print("[dAIry] Location logged: \(String(format: "%.4f", location.coordinate.latitude)), \(String(format: "%.4f", location.coordinate.longitude))")
+        }
+        saveVisits(visits)
+    }
+
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        let status = manager.authorizationStatus
+        print("[dAIry] Location authorization changed: \(status.rawValue)")
+        if status == .authorizedAlways {
+            locationManager.allowsBackgroundLocationUpdates = true
+            locationManager.pausesLocationUpdatesAutomatically = false
+            startTracking()
+        } else if status == .authorizedWhenInUse {
+            startTracking()
+        }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        print("[dAIry] Location error: \(error)")
+    }
+
+    // MARK: - Persistence (UserDefaults)
+
+    private func loadVisits() -> [LocationVisit] {
+        guard let data = userDefaults.data(forKey: visitsKey),
+              let visits = try? JSONDecoder().decode([LocationVisit].self, from: data) else {
+            return []
+        }
+        return visits
+    }
+
+    private func saveVisits(_ visits: [LocationVisit]) {
+        if let data = try? JSONEncoder().encode(visits) {
+            userDefaults.set(data, forKey: visitsKey)
+        }
+    }
+}

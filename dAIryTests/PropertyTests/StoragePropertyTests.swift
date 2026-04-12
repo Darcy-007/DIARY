@@ -51,7 +51,6 @@ final class StoragePropertyTests: XCTestCase {
                 text: text,
                 photoReferences: [PhotoReference(assetIdentifier: "asset-1", captureDate: startOfDay, caption: "cap")],
                 healthSummary: HealthSummary(stepCount: 1000, walkingRunningDistanceMeters: 800, activeEnergyBurnedKcal: 200),
-                transactionSummary: [TransactionSummary(merchantName: "Store", amount: 42.50, date: startOfDay)],
                 isSupplemental: isSupplemental
             )
 
@@ -65,10 +64,9 @@ final class StoragePropertyTests: XCTestCase {
             let textMatch = fetched.text == entry.text
             let photoMatch = fetched.photoReferences.count == entry.photoReferences.count
             let healthMatch = fetched.healthSummary?.stepCount == entry.healthSummary?.stepCount
-            let txMatch = fetched.transactionSummary.count == entry.transactionSummary.count
             let supplementalMatch = fetched.isSupplemental == entry.isSupplemental
 
-            return idMatch && dateMatch && textMatch && photoMatch && healthMatch && txMatch && supplementalMatch
+            return idMatch && dateMatch && textMatch && photoMatch && healthMatch && supplementalMatch
         }
     }
 
