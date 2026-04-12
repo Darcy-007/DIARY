@@ -28,20 +28,5 @@
 	<string>dAIry needs access to your photo library to include your photos in daily diary entries.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSExceptionDomains</key>
-		<dict>
-			<key>googleapis.com</key>
-			<dict>
-				<key>NSIncludesSubdomains</key>
-				<true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<false/>
-				<key>NSExceptionMinimumTLSVersion</key>
-				<string>TLSv1.2</string>
-			</dict>
-		</dict>
-	</dict>
 </dict>
 </plist>
