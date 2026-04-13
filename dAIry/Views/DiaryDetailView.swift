@@ -13,13 +13,56 @@ struct DiaryDetailView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var showDeleteConfirmation: Bool = false
+    @State private var isEditing: Bool = false
+    @State private var editedText: String = ""
 
     // MARK: - Body
 
     var body: some View {
+        if isEditing {
+            // Edit mode — full screen text editor
+            VStack(alignment: .leading, spacing: 12) {
+                Text(entry.date.formatted(date: .long, time: .omitted))
+                    .font(.title2.weight(.bold))
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+
+                TextEditor(text: $editedText)
+                    .font(.body)
+                    .padding(4)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+                    )
+                    .padding(.horizontal)
+            }
+            .navigationTitle("Entry")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Save") {
+                        entry.text = editedText
+                        try? storageManager.save(entry)
+                        isEditing = false
+                    }
+                }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        isEditing = false
+                    }
+                }
+            }
+        } else {
+            // Read mode — scrollable content
+            readView
+        }
+    }
+
+    private var readView: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                // Header
                 VStack(alignment: .leading, spacing: 4) {
                     Text(entry.date.formatted(date: .long, time: .omitted))
                         .font(.title2.weight(.bold))
@@ -38,16 +81,13 @@ struct DiaryDetailView: View {
 
                 Divider()
 
-                // Task 9.2 — Full diary text
                 Text(entry.text)
                     .font(.body)
 
-                // Task 9.2 — Associated photos
                 if !entry.photoReferences.isEmpty {
                     photosSection
                 }
 
-                // Health summary
                 if let health = entry.healthSummary {
                     healthSection(health)
                 }
@@ -59,14 +99,18 @@ struct DiaryDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         #endif
         .toolbar {
-            // Task 9.5 — Delete button
+            ToolbarItem(placement: .primaryAction) {
+                Button("Edit") {
+                    editedText = entry.text
+                    isEditing = true
+                }
+            }
             ToolbarItem(placement: .destructiveAction) {
                 Button("Delete", role: .destructive) {
                     showDeleteConfirmation = true
                 }
             }
         }
-        // Task 9.5 — Delete confirmation alert
         .alert("Delete Entry?", isPresented: $showDeleteConfirmation) {
             Button("Delete", role: .destructive) {
                 deleteEntry()
