@@ -126,8 +126,7 @@ final class DataCollector: DataCollecting {
             print("[dAIry] Skipping health — status: \(healthStatus)")
         }
 
-        if let tracker = locationTracker,
-           (tracker.authorizationStatus == .authorizedAlways || tracker.authorizationStatus == .authorizedWhenInUse) {
+        if let tracker = locationTracker, tracker.isAuthorized {
             locationVisits = tracker.visits(for: window)
             print("[dAIry] Collected \(locationVisits.count) location visits")
         } else {

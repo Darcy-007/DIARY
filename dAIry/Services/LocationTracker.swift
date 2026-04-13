@@ -21,17 +21,27 @@ final class LocationTracker: NSObject, ObservableObject, CLLocationManagerDelega
     // MARK: - Permission
 
     func requestPermission() {
-        // iOS requires requesting "When In Use" first, then "Always"
         let status = locationManager.authorizationStatus
+        #if os(iOS)
         if status == .notDetermined {
             locationManager.requestWhenInUseAuthorization()
         } else if status == .authorizedWhenInUse {
             locationManager.requestAlwaysAuthorization()
         }
+        #else
+        if status == .notDetermined {
+            locationManager.requestAlwaysAuthorization()
+        }
+        #endif
     }
 
     var authorizationStatus: CLAuthorizationStatus {
         locationManager.authorizationStatus
+    }
+
+    var isAuthorized: Bool {
+        let status = authorizationStatus
+        return status == .authorizedAlways
     }
 
     // MARK: - Tracking
@@ -88,18 +98,17 @@ final class LocationTracker: NSObject, ObservableObject, CLLocationManagerDelega
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         let status = manager.authorizationStatus
         print("[dAIry] Location authorization changed: \(status.rawValue)")
-        switch status {
-        case .authorizedWhenInUse:
-            // Step 2: Now request "Always" upgrade
-            locationManager.requestAlwaysAuthorization()
-            startTracking()
-        case .authorizedAlways:
+        if status == .authorizedAlways {
             locationManager.allowsBackgroundLocationUpdates = true
             locationManager.pausesLocationUpdatesAutomatically = false
             startTracking()
-        default:
-            break
         }
+        #if os(iOS)
+        if status == .authorizedWhenInUse {
+            locationManager.requestAlwaysAuthorization()
+            startTracking()
+        }
+        #endif
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {

@@ -6,6 +6,7 @@ struct SettingsView: View {
 
     let apiKeyManager: APIKeyManaging
     let scheduler: Scheduling
+    @ObservedObject var languageManager: LanguageManager
 
     // MARK: - Local State
 
@@ -22,9 +23,10 @@ struct SettingsView: View {
 
     // MARK: - Init
 
-    init(apiKeyManager: APIKeyManaging, scheduler: Scheduling) {
+    init(apiKeyManager: APIKeyManaging, scheduler: Scheduling, languageManager: LanguageManager) {
         self.apiKeyManager = apiKeyManager
         self.scheduler = scheduler
+        self.languageManager = languageManager
         self.schedulerRef = scheduler
 
         // Derive initial key status
@@ -41,14 +43,17 @@ struct SettingsView: View {
         _collectionTime = State(initialValue: date)
     }
 
+    // MARK: - Localized Strings
+
+    private var s: L10n { L10n(lang: languageManager) }
+
     // MARK: - Body
 
     var body: some View {
         Form {
-            // MARK: Task 8.1 — Daily Collection Time Picker
             Section {
                 DatePicker(
-                    "Collection Time",
+                    s.collectionTime,
                     selection: $collectionTime,
                     displayedComponents: .hourAndMinute
                 )
@@ -63,33 +68,29 @@ struct SettingsView: View {
                     mutableScheduler.scheduleDailyCollection(at: components)
                 }
             } header: {
-                Text("Daily Collection")
+                Text(s.dailyCollection)
             } footer: {
-                Text("The app will collect your data and generate a diary entry at this time each day.")
+                Text(s.collectionTimeFooter)
             }
 
-            // MARK: Tasks 8.2–8.5 — Gemini API Key Management
             Section {
-                // Task 8.5 — Key status display
                 HStack {
-                    Text("Status")
+                    Text(s.status)
                     Spacer()
                     Text(keyStatusLabel)
                         .foregroundColor(keyStatusColor)
                 }
 
                 if keyStatus == .valid {
-                    // Key is saved — only show remove option
-                    Text("Your Gemini API key is configured and ready to use.")
+                    Text(s.apiKeyConfigured)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
 
-                    Button("Remove API Key", role: .destructive) {
+                    Button(s.removeApiKey, role: .destructive) {
                         removeKey()
                     }
                 } else {
-                    // No valid key — show input and save button
-                    SecureField("Enter Gemini API Key", text: $apiKeyInput)
+                    SecureField(s.enterApiKey, text: $apiKeyInput)
                         .textContentType(.password)
                         .autocorrectionDisabled()
                         #if os(iOS)
@@ -100,7 +101,7 @@ struct SettingsView: View {
                         Task { await saveKey() }
                     } label: {
                         HStack {
-                            Text("Save Key")
+                            Text(s.saveKey)
                             if isValidating {
                                 Spacer()
                                 ProgressView()
@@ -109,7 +110,6 @@ struct SettingsView: View {
                     }
                     .disabled(apiKeyInput.isEmpty || isValidating)
 
-                    // Validation result message
                     if let message = validationMessage {
                         Text(message)
                             .font(.footnote)
@@ -117,22 +117,30 @@ struct SettingsView: View {
                     }
                 }
             } header: {
-                Text("Gemini API Key")
+                Text(s.geminiApiKey)
+            }
+
+            // Language picker
+            Section {
+                Picker(s.language, selection: $languageManager.current) {
+                    ForEach(AppLanguage.allCases, id: \.self) { lang in
+                        Text(lang.displayName).tag(lang)
+                    }
+                }
+            } header: {
+                Text(s.language)
             }
         }
-        .navigationTitle("Settings")
+        .navigationTitle(s.settings)
     }
 
     // MARK: - Key Status Helpers
 
     private var keyStatusLabel: String {
         switch keyStatus {
-        case .notConfigured:
-            return "Not Configured"
-        case .valid:
-            return "Valid"
-        case .invalid:
-            return "Invalid"
+        case .notConfigured: return s.notConfigured
+        case .valid: return s.valid
+        case .invalid: return s.invalid
         }
     }
 

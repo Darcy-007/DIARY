@@ -10,6 +10,7 @@ struct DiaryListView: View {
     let diaryGenerator: DiaryGenerating
     let apiKeyManager: APIKeyManaging
     let scheduler: Scheduling
+    @ObservedObject var languageManager: LanguageManager
 
     // MARK: - State
 
@@ -63,7 +64,8 @@ struct DiaryListView: View {
                     NavigationLink {
                         SettingsView(
                             apiKeyManager: apiKeyManager,
-                            scheduler: scheduler
+                            scheduler: scheduler,
+                            languageManager: languageManager
                         )
                     } label: {
                         Image(systemName: "gear")
@@ -112,7 +114,8 @@ struct DiaryListView: View {
         NavigationLink {
             SettingsView(
                 apiKeyManager: apiKeyManager,
-                scheduler: scheduler
+                scheduler: scheduler,
+                languageManager: languageManager
             )
         } label: {
             HStack {

@@ -47,6 +47,7 @@ final class DiaryGenerator: DiaryGenerating {
 
     private let apiKeyManager: APIKeyManaging
     private let maxRetries = 3
+    var language: AppLanguage = .english
 
     init(apiKeyManager: APIKeyManaging) {
         self.apiKeyManager = apiKeyManager
@@ -143,7 +144,7 @@ final class DiaryGenerator: DiaryGenerating {
             sections.append(locSection)
         }
 
-        sections.append("Write a first-person diary entry for today based on this data. If no data was recorded, write a short, lighthearted entry about having a quiet uneventful day where you did nothing notable — something like \"today was not so fruitful and I literally did nothing\".")
+        sections.append("Write a first-person diary entry for today based on this data. If no data was recorded, write a short, lighthearted entry about having a quiet uneventful day where you did nothing notable — something like \"today was not so fruitful and I literally did nothing\". \(language.geminiInstruction)")
 
         return sections.joined(separator: "\n\n")
     }

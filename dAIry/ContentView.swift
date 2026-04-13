@@ -6,6 +6,7 @@ struct ContentView: View {
     @State private var hasCompletedOnboarding: Bool =
         UserDefaults.standard.bool(forKey: OnboardingView.hasCompletedOnboardingKey)
     @StateObject private var locationTracker = LocationTracker()
+    @StateObject private var languageManager = LanguageManager()
 
     var body: some View {
         let apiKeyManager = APIKeyManager()
@@ -13,6 +14,7 @@ struct ContentView: View {
         let storageManager = StorageManager(modelContext: modelContext)
         let dataCollector = DataCollector(permissionManager: permissionManager, locationTracker: locationTracker)
         let diaryGenerator = DiaryGenerator(apiKeyManager: apiKeyManager)
+        let _ = { diaryGenerator.language = languageManager.current }()
         let scheduler = DailyScheduler(
             dataCollector: dataCollector,
             diaryGenerator: diaryGenerator,
@@ -25,12 +27,11 @@ struct ContentView: View {
                 dataCollector: dataCollector,
                 diaryGenerator: diaryGenerator,
                 apiKeyManager: apiKeyManager,
-                scheduler: scheduler
+                scheduler: scheduler,
+                languageManager: languageManager
             )
             .onAppear {
-                // Start location tracking if authorized
-                if locationTracker.authorizationStatus == .authorizedAlways ||
-                   locationTracker.authorizationStatus == .authorizedWhenInUse {
+                if locationTracker.isAuthorized {
                     locationTracker.startTracking()
                 }
             }
