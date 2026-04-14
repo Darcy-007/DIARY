@@ -161,6 +161,18 @@ final class DailyScheduler: Scheduling {
 
     func nextOccurrence(of time: DateComponents, calendar: Calendar = .current) -> Date? {
         let now = Date()
+        // Try today first
+        var todayComponents = calendar.dateComponents([.year, .month, .day], from: now)
+        todayComponents.hour = time.hour
+        todayComponents.minute = time.minute
+        todayComponents.second = 0
+
+        if let todayDate = calendar.date(from: todayComponents), todayDate > now {
+            // Today's scheduled time hasn't passed yet
+            return todayDate
+        }
+
+        // Otherwise schedule for tomorrow
         return calendar.nextDate(
             after: now,
             matching: time,
