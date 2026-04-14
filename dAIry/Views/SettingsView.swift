@@ -17,17 +17,12 @@ struct SettingsView: View {
     @State private var validationSuccess: Bool = false
     @State private var keyStatus: APIKeyStatus
 
-    // MARK: - Private
-
-    private var schedulerRef: Scheduling
-
     // MARK: - Init
 
     init(apiKeyManager: APIKeyManaging, scheduler: Scheduling, languageManager: LanguageManager) {
         self.apiKeyManager = apiKeyManager
         self.scheduler = scheduler
         self.languageManager = languageManager
-        self.schedulerRef = scheduler
 
         // Derive initial key status
         let initialStatus: APIKeyStatus = apiKeyManager.isKeyConfigured() ? .valid : .notConfigured
@@ -63,9 +58,7 @@ struct SettingsView: View {
                         hour: calendar.component(.hour, from: newValue),
                         minute: calendar.component(.minute, from: newValue)
                     )
-                    var mutableScheduler = schedulerRef
-                    mutableScheduler.configuredTime = components
-                    mutableScheduler.scheduleDailyCollection(at: components)
+                    scheduler.scheduleDailyCollection(at: components)
                 }
             } header: {
                 Text(s.dailyCollection)
@@ -132,6 +125,18 @@ struct SettingsView: View {
             }
         }
         .navigationTitle(s.settings)
+        .onAppear {
+            // Refresh time from scheduler in case it was updated
+            let components = scheduler.configuredTime
+            let calendar = Calendar.current
+            var dc = DateComponents()
+            dc.hour = components.hour ?? 21
+            dc.minute = components.minute ?? 0
+            if let date = calendar.date(from: dc) {
+                collectionTime = date
+            }
+            keyStatus = apiKeyManager.isKeyConfigured() ? .valid : .notConfigured
+        }
     }
 
     // MARK: - Key Status Helpers

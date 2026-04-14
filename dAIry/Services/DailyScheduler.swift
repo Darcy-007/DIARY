@@ -85,12 +85,18 @@ final class DailyScheduler: Scheduling {
         let workItem = Task {
             do {
                 let window = CollectionWindow.today()
-                let collectedData = try await dataCollector.collectAll(for: window)
 
-                if !collectedData.isEmpty {
-                    let entry = try await diaryGenerator.generate(from: collectedData)
-                    try storage.save(entry)
+                // Skip if a diary entry already exists for today
+                if storage.entryExists(for: window.date) {
+                    print("[dAIry] Diary already exists for today, skipping auto-generation")
+                    task.setTaskCompleted(success: true)
+                    scheduleNextTask(at: configuredTime)
+                    return
                 }
+
+                let collectedData = try await dataCollector.collectAll(for: window)
+                let entry = try await diaryGenerator.generate(from: collectedData)
+                try storage.save(entry)
 
                 task.setTaskCompleted(success: true)
                 // Schedule next occurrence

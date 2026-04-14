@@ -42,6 +42,18 @@ struct dAIryApp: App {
         }
     }()
 
+    init() {
+        // Register background task handler at app launch
+        #if os(iOS)
+        DailyScheduler.registerBackgroundTask { task in
+            // The actual execution is handled by DailyScheduler.handleBackgroundTask
+            // but we need a registered handler. The real work happens via the scheduler
+            // instance in ContentView.
+            task.setTaskCompleted(success: true)
+        }
+        #endif
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()

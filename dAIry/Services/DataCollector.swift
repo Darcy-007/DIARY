@@ -34,7 +34,7 @@ final class DataCollector: DataCollecting {
         let assets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
 
         var photos: [PhotoData] = []
-        let maxPhotos = min(assets.count, 10)
+        let maxPhotos = min(assets.count, 100)
         for i in 0..<maxPhotos {
             let asset = assets.object(at: i)
             let location: CLLocationCoordinate2D? = asset.location?.coordinate

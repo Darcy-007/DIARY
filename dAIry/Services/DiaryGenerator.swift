@@ -187,7 +187,7 @@ final class DiaryGenerator: DiaryGenerating {
         // Build multimodal parts: text + images
         var parts: [any ThrowingPartsRepresentable] = [ModelContent.Part.text(prompt)]
 
-        for jpegData in images.prefix(5) {
+        for jpegData in images.prefix(100) {
             parts.append(ModelContent.Part.data(mimetype: "image/jpeg", jpegData))
         }
 

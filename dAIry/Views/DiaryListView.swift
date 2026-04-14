@@ -20,27 +20,70 @@ struct DiaryListView: View {
     @State private var generationError: String?
     @State private var showErrorAlert: Bool = false
     @State private var isKeyConfigured: Bool = false
+    @State private var searchText: String = ""
+    @State private var showDatePicker: Bool = false
+    @State private var selectedDate: Date = Date()
+    @State private var navigateToEntryId: UUID? = nil
+
+    private var filteredEntries: [DiaryEntry] {
+        if searchText.isEmpty {
+            return entries
+        }
+        return entries.filter { $0.text.localizedCaseInsensitiveContains(searchText) }
+    }
+
+    private var datesWithEntries: Set<DateComponents> {
+        let calendar = Calendar.current
+        return Set(entries.map { calendar.dateComponents([.year, .month, .day], from: $0.date) })
+    }
 
     // MARK: - Body
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Task 9.6 — API key missing banner
+                // Custom search bar with calendar icon
+                HStack(spacing: 10) {
+                    HStack {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundStyle(.secondary)
+                        TextField("Search diary entries", text: $searchText)
+                            .autocorrectionDisabled()
+                        if !searchText.isEmpty {
+                            Button { searchText = "" } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .padding(8)
+                    .background(Color(.systemGray6))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                    Button { showDatePicker = true } label: {
+                        Image(systemName: "calendar")
+                            .font(.title3)
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+
+                // API key missing banner
                 if !isKeyConfigured {
                     apiKeyBanner
                 }
 
                 List {
-                    // Task 9.1 — Chronological diary entry list
-                    if entries.isEmpty {
+                    if filteredEntries.isEmpty {
                         ContentUnavailableView(
                             "No Diary Entries",
                             systemImage: "book.closed",
-                            description: Text("Tap Generate Diary to create your first entry.")
+                            description: Text(searchText.isEmpty
+                                ? "Tap Generate Diary to create your first entry."
+                                : "No entries match your search.")
                         )
                     } else {
-                        ForEach(entries, id: \.id) { entry in
+                        ForEach(filteredEntries, id: \.id) { entry in
                             NavigationLink(value: entry.id) {
                                 DiaryEntryRow(entry: entry)
                             }
@@ -103,6 +146,56 @@ struct DiaryListView: View {
             .onAppear {
                 refreshEntries()
                 isKeyConfigured = apiKeyManager.isKeyConfigured()
+            }
+            .sheet(isPresented: $showDatePicker) {
+                NavigationStack {
+                    VStack {
+                        DatePicker(
+                            "Select Date",
+                            selection: $selectedDate,
+                            displayedComponents: .date
+                        )
+                        .datePickerStyle(.graphical)
+                        .padding()
+
+                        if storageManager.fetch(for: selectedDate) == nil {
+                            Text("No diary entry for this date")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                                .padding(.bottom)
+                        }
+                    }
+                    .navigationTitle("Select Date")
+                    #if os(iOS)
+                    .navigationBarTitleDisplayMode(.inline)
+                    #endif
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Go") {
+                                showDatePicker = false
+                                if let entry = storageManager.fetch(for: selectedDate) {
+                                    navigateToEntryId = entry.id
+                                }
+                            }
+                            .disabled(storageManager.fetch(for: selectedDate) == nil)
+                        }
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cancel") {
+                                showDatePicker = false
+                            }
+                        }
+                    }
+                }
+                .presentationDetents([.medium])
+            }
+            .navigationDestination(item: $navigateToEntryId) { entryId in
+                if let entry = entries.first(where: { $0.id == entryId }) {
+                    DiaryDetailView(
+                        entry: entry,
+                        storageManager: storageManager,
+                        onDelete: { refreshEntries() }
+                    )
+                }
             }
         }
     }
