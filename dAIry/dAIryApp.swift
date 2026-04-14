@@ -1,5 +1,8 @@
 import SwiftUI
 import SwiftData
+#if os(iOS)
+import BackgroundTasks
+#endif
 
 #if !TESTING
 @main
@@ -10,9 +13,6 @@ struct dAIryApp: App {
             DiaryEntry.self
         ])
 
-        // 11.1: Configure SwiftData store with NSFileProtectionComplete
-        // to encrypt all stored diary entries and collected data at rest.
-        // Data is inaccessible when the device is locked.
         let storeURL = URL.applicationSupportDirectory
             .appending(path: "dAIry.store")
         let modelConfiguration = ModelConfiguration(
@@ -27,7 +27,6 @@ struct dAIryApp: App {
                 configurations: [modelConfiguration]
             )
 
-            // Apply NSFileProtectionComplete to the SwiftData store file
             let fileManager = FileManager.default
             if fileManager.fileExists(atPath: storeURL.path(percentEncoded: false)) {
                 try fileManager.setAttributes(
@@ -43,14 +42,29 @@ struct dAIryApp: App {
     }()
 
     init() {
-        // Register background task handler at app launch
         #if os(iOS)
-        DailyScheduler.registerBackgroundTask { task in
-            // The actual execution is handled by DailyScheduler.handleBackgroundTask
-            // but we need a registered handler. The real work happens via the scheduler
-            // instance in ContentView.
-            task.setTaskCompleted(success: true)
+        let container = sharedModelContainer
+        BGTaskScheduler.shared.register(
+            forTaskWithIdentifier: DailyScheduler.taskIdentifier,
+            using: nil
+        ) { task in
+            guard let processingTask = task as? BGProcessingTask else { return }
+            print("[dAIry] Background task fired!")
+
+            let context = ModelContext(container)
+            let apiKeyManager = APIKeyManager()
+            let permissionManager = PermissionManager()
+            let storageManager = StorageManager(modelContext: context)
+            let dataCollector = DataCollector(permissionManager: permissionManager)
+            let diaryGenerator = DiaryGenerator(apiKeyManager: apiKeyManager)
+            let scheduler = DailyScheduler(
+                dataCollector: dataCollector,
+                diaryGenerator: diaryGenerator,
+                storage: storageManager
+            )
+            scheduler.handleBackgroundTask(processingTask)
         }
+        print("[dAIry] Background task registered for identifier: \(DailyScheduler.taskIdentifier)")
         #endif
     }
 

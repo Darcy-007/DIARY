@@ -75,6 +75,18 @@ struct SettingsView: View {
                 }
 
                 if keyStatus == .valid {
+                    // Show masked key with last 4 digits
+                    if let key = apiKeyManager.getKey(), key.count >= 4 {
+                        let last4 = String(key.suffix(4))
+                        HStack {
+                            Text(s.language == "zh" ? "密钥" : "Key")
+                            Spacer()
+                            Text("••••••••\(last4)")
+                                .foregroundStyle(.secondary)
+                                .font(.footnote.monospaced())
+                        }
+                    }
+
                     Text(s.apiKeyConfigured)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
@@ -83,6 +95,17 @@ struct SettingsView: View {
                         removeKey()
                     }
                 } else {
+                    // Link to get API key
+                    Link(destination: URL(string: "https://aistudio.google.com/api-keys")!) {
+                        HStack {
+                            Image(systemName: "link")
+                            Text(languageManager.current == .chinese
+                                ? "从 Google AI Studio 获取 API 密钥"
+                                : "Get your API key from Google AI Studio")
+                        }
+                        .font(.footnote)
+                    }
+
                     SecureField(s.enterApiKey, text: $apiKeyInput)
                         .textContentType(.password)
                         .autocorrectionDisabled()

@@ -82,11 +82,12 @@ final class DailyScheduler: Scheduling {
     /// Called by the background task handler to perform collection and generation.
     #if os(iOS)
     func handleBackgroundTask(_ task: BGProcessingTask) {
+        print("[dAIry] handleBackgroundTask started")
         let workItem = Task {
             do {
                 let window = CollectionWindow.today()
+                print("[dAIry] Collection window: \(window.start) to \(window.end)")
 
-                // Skip if a diary entry already exists for today
                 if storage.entryExists(for: window.date) {
                     print("[dAIry] Diary already exists for today, skipping auto-generation")
                     task.setTaskCompleted(success: true)
@@ -94,9 +95,12 @@ final class DailyScheduler: Scheduling {
                     return
                 }
 
+                print("[dAIry] Collecting data...")
                 let collectedData = try await dataCollector.collectAll(for: window)
+                print("[dAIry] Generating diary...")
                 let entry = try await diaryGenerator.generate(from: collectedData)
                 try storage.save(entry)
+                print("[dAIry] Diary auto-generated and saved successfully")
 
                 task.setTaskCompleted(success: true)
                 // Schedule next occurrence
