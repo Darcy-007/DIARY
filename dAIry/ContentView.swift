@@ -34,6 +34,8 @@ struct ContentView: View {
                 if locationTracker.isAuthorized {
                     locationTracker.startTracking()
                 }
+                // Schedule the daily background task on every app launch
+                scheduler.scheduleDailyCollection(at: scheduler.configuredTime)
             }
         } else {
             OnboardingView(

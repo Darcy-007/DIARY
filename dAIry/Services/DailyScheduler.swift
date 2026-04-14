@@ -66,6 +66,7 @@ final class DailyScheduler: Scheduling {
 
     func scheduleDailyCollection(at time: DateComponents) {
         configuredTime = time
+        print("[dAIry] scheduleDailyCollection called with hour: \(time.hour ?? -1), minute: \(time.minute ?? -1)")
         #if os(iOS)
         scheduleNextTask(at: time)
         #endif
@@ -128,30 +129,32 @@ final class DailyScheduler: Scheduling {
         let request = BGProcessingTaskRequest(identifier: Self.taskIdentifier)
         request.requiresNetworkConnectivity = true
 
-        // Calculate the next occurrence of the configured time
         if let nextDate = nextOccurrence(of: time) {
             request.earliestBeginDate = nextDate
+            print("[dAIry] Scheduling background task for: \(nextDate)")
+        } else {
+            print("[dAIry] WARNING: Could not calculate next occurrence for time \(time)")
         }
 
         do {
             try BGTaskScheduler.shared.submit(request)
+            print("[dAIry] Background task submitted successfully")
         } catch {
-            print("[DailyScheduler] Failed to schedule background task: \(error)")
+            print("[dAIry] ERROR: Failed to schedule background task: \(error)")
         }
     }
 
-    // MARK: - Retry Logic (6.5)
-
     private func scheduleRetry() {
+        let retryDate = Date(timeIntervalSinceNow: 15 * 60)
         let request = BGProcessingTaskRequest(identifier: Self.taskIdentifier)
         request.requiresNetworkConnectivity = true
-        // Schedule for next available opportunity with a minimum 15-minute delay
-        request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60)
+        request.earliestBeginDate = retryDate
 
         do {
             try BGTaskScheduler.shared.submit(request)
+            print("[dAIry] Retry scheduled for: \(retryDate)")
         } catch {
-            print("[DailyScheduler] Failed to schedule retry: \(error)")
+            print("[dAIry] ERROR: Failed to schedule retry: \(error)")
         }
     }
     #endif
