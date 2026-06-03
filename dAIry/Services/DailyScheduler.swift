@@ -115,6 +115,7 @@ final class DailyScheduler: Scheduling {
 
         // Handle system-initiated expiration
         task.expirationHandler = {
+            print("[dAIry] Background task expired by system before completion")
             workItem.cancel()
             // Re-schedule for next available opportunity on expiration
             self.scheduleRetry()

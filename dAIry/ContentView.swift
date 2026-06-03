@@ -1,5 +1,8 @@
 import SwiftUI
 import SwiftData
+#if os(iOS)
+import BackgroundTasks
+#endif
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
@@ -36,6 +39,17 @@ struct ContentView: View {
                 }
                 // Schedule the daily background task on every app launch
                 scheduler.scheduleDailyCollection(at: scheduler.configuredTime)
+                // Diagnostic: confirm at runtime whether the request is actually queued
+                #if os(iOS)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    BGTaskScheduler.shared.getPendingTaskRequests { requests in
+                        print("[dAIry] Pending task requests: \(requests.count)")
+                        for r in requests {
+                            print("[dAIry]  - \(r.identifier) earliestBeginDate: \(String(describing: r.earliestBeginDate))")
+                        }
+                    }
+                }
+                #endif
             }
         } else {
             OnboardingView(
