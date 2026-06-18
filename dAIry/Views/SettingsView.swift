@@ -7,6 +7,7 @@ struct SettingsView: View {
     let apiKeyManager: APIKeyManaging
     let scheduler: Scheduling
     @ObservedObject var languageManager: LanguageManager
+    @ObservedObject var notificationManager: NotificationManager
 
     // MARK: - Local State
 
@@ -19,10 +20,11 @@ struct SettingsView: View {
 
     // MARK: - Init
 
-    init(apiKeyManager: APIKeyManaging, scheduler: Scheduling, languageManager: LanguageManager) {
+    init(apiKeyManager: APIKeyManaging, scheduler: Scheduling, languageManager: LanguageManager, notificationManager: NotificationManager) {
         self.apiKeyManager = apiKeyManager
         self.scheduler = scheduler
         self.languageManager = languageManager
+        self.notificationManager = notificationManager
 
         // Derive initial key status
         let initialStatus: APIKeyStatus = apiKeyManager.isKeyConfigured() ? .valid : .notConfigured
@@ -59,6 +61,12 @@ struct SettingsView: View {
                         minute: calendar.component(.minute, from: newValue)
                     )
                     scheduler.scheduleDailyCollection(at: components)
+                    // Keep the exact-time local notification reminder in sync
+                    notificationManager.scheduleDailyReminder(
+                        at: components,
+                        title: s.reminderTitle,
+                        body: s.reminderBody
+                    )
                 }
             } header: {
                 Text(s.dailyCollection)

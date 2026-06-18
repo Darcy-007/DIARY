@@ -10,6 +10,7 @@ struct ContentView: View {
         UserDefaults.standard.bool(forKey: OnboardingView.hasCompletedOnboardingKey)
     @StateObject private var locationTracker = LocationTracker()
     @StateObject private var languageManager = LanguageManager()
+    @StateObject private var notificationManager = NotificationManager.shared
 
     var body: some View {
         let apiKeyManager = APIKeyManager()
@@ -31,7 +32,8 @@ struct ContentView: View {
                 diaryGenerator: diaryGenerator,
                 apiKeyManager: apiKeyManager,
                 scheduler: scheduler,
-                languageManager: languageManager
+                languageManager: languageManager,
+                notificationManager: notificationManager
             )
             .onAppear {
                 if locationTracker.isAuthorized {
@@ -39,6 +41,15 @@ struct ContentView: View {
                 }
                 // Schedule the daily background task on every app launch
                 scheduler.scheduleDailyCollection(at: scheduler.configuredTime)
+                // Also schedule the exact-time local notification reminder
+                let strings = L10n(lang: languageManager)
+                notificationManager.scheduleDailyReminder(
+                    at: scheduler.configuredTime,
+                    title: strings.reminderTitle,
+                    body: strings.reminderBody
+                )
+                // Request notification permission once (system only prompts once)
+                Task { await notificationManager.requestAuthorization() }
                 // Diagnostic: confirm at runtime whether the request is actually queued
                 #if os(iOS)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3) {

@@ -2,12 +2,31 @@ import SwiftUI
 import SwiftData
 #if os(iOS)
 import BackgroundTasks
+import UIKit
+#endif
+
+#if os(iOS)
+/// Installs the notification delegate as early as possible so reminder taps
+/// that launch the app from a terminated state are still delivered.
+final class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        // Touch the shared instance so its init installs the UNUserNotificationCenter delegate.
+        _ = NotificationManager.shared
+        return true
+    }
+}
 #endif
 
 #if !TESTING
 @main
 #endif
 struct dAIryApp: App {
+    #if os(iOS)
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    #endif
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             DiaryEntry.self

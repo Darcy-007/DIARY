@@ -114,6 +114,13 @@ struct L10n {
     var language: String { lang.localizedString("Language", zh: "语言") }
     var apiKeySaved: String { lang.localizedString("API key saved successfully.", zh: "API密钥保存成功。") }
 
+    // MARK: - Notifications
+    var reminderTitle: String { lang.localizedString("Your dAIry is ready", zh: "你的日记已准备好") }
+    var reminderBody: String { lang.localizedString(
+        "Tap to generate today's diary entry.",
+        zh: "点击生成今天的日记。"
+    )}
+
     // MARK: - Errors
     var generationError: String { lang.localizedString("Generation Error", zh: "生成错误") }
     var ok: String { lang.localizedString("OK", zh: "好") }

@@ -11,6 +11,7 @@ struct DiaryListView: View {
     let apiKeyManager: APIKeyManaging
     let scheduler: Scheduling
     @ObservedObject var languageManager: LanguageManager
+    @ObservedObject var notificationManager: NotificationManager
 
     // MARK: - State
 
@@ -41,57 +42,7 @@ struct DiaryListView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // Custom search bar with calendar icon
-                HStack(spacing: 10) {
-                    HStack {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundStyle(.secondary)
-                        TextField("Search diary entries", text: $searchText)
-                            .autocorrectionDisabled()
-                        if !searchText.isEmpty {
-                            Button { searchText = "" } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                    .padding(8)
-                    .background(Color(.systemGray6))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-
-                    Button { showDatePicker = true } label: {
-                        Image(systemName: "calendar")
-                            .font(.title3)
-                    }
-                }
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-
-                // API key missing banner
-                if !isKeyConfigured {
-                    apiKeyBanner
-                }
-
-                List {
-                    if filteredEntries.isEmpty {
-                        ContentUnavailableView(
-                            "No Diary Entries",
-                            systemImage: "book.closed",
-                            description: Text(searchText.isEmpty
-                                ? "Tap Generate Diary to create your first entry."
-                                : "No entries match your search.")
-                        )
-                    } else {
-                        ForEach(filteredEntries, id: \.id) { entry in
-                            NavigationLink(value: entry.id) {
-                                DiaryEntryRow(entry: entry)
-                            }
-                        }
-                    }
-                }
-                .listStyle(.plain)
-            }
+            mainContent
             .navigationTitle("dAIry")
             .navigationDestination(for: UUID.self) { entryId in
                 if let entry = entries.first(where: { $0.id == entryId }) {
@@ -108,7 +59,8 @@ struct DiaryListView: View {
                         SettingsView(
                             apiKeyManager: apiKeyManager,
                             scheduler: scheduler,
-                            languageManager: languageManager
+                            languageManager: languageManager,
+                            notificationManager: notificationManager
                         )
                     } label: {
                         Image(systemName: "gear")
@@ -146,6 +98,18 @@ struct DiaryListView: View {
             .onAppear {
                 refreshEntries()
                 isKeyConfigured = apiKeyManager.isKeyConfigured()
+                // Handle a reminder tap that launched/foregrounded the app
+                if notificationManager.shouldGenerateOnLaunch {
+                    notificationManager.shouldGenerateOnLaunch = false
+                    Task { await generateFromReminder() }
+                }
+            }
+            .onChange(of: notificationManager.shouldGenerateOnLaunch) { _, shouldGenerate in
+                // Handle a tap received while the view is already on screen
+                if shouldGenerate {
+                    notificationManager.shouldGenerateOnLaunch = false
+                    Task { await generateFromReminder() }
+                }
             }
             .sheet(isPresented: $showDatePicker) {
                 NavigationStack {
@@ -202,13 +166,68 @@ struct DiaryListView: View {
 
     // MARK: - Subviews
 
+    private var mainContent: some View {
+        VStack(spacing: 0) {
+            // Custom search bar with calendar icon
+            HStack(spacing: 10) {
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                    TextField("Search diary entries", text: $searchText)
+                        .autocorrectionDisabled()
+                    if !searchText.isEmpty {
+                        Button { searchText = "" } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .padding(8)
+                .background(Color(.systemGray6))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                Button { showDatePicker = true } label: {
+                    Image(systemName: "calendar")
+                        .font(.title3)
+                }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+
+            // API key missing banner
+            if !isKeyConfigured {
+                apiKeyBanner
+            }
+
+            List {
+                if filteredEntries.isEmpty {
+                    ContentUnavailableView(
+                        "No Diary Entries",
+                        systemImage: "book.closed",
+                        description: Text(searchText.isEmpty
+                            ? "Tap Generate Diary to create your first entry."
+                            : "No entries match your search.")
+                    )
+                } else {
+                    ForEach(filteredEntries, id: \.id) { entry in
+                        NavigationLink(value: entry.id) {
+                            DiaryEntryRow(entry: entry)
+                        }
+                    }
+                }
+            }
+            .listStyle(.plain)
+        }
+    }
+
     // Task 9.6 — API key missing banner with navigation to settings
     private var apiKeyBanner: some View {
         NavigationLink {
             SettingsView(
                 apiKeyManager: apiKeyManager,
                 scheduler: scheduler,
-                languageManager: languageManager
+                languageManager: languageManager,
+                notificationManager: notificationManager
             )
         } label: {
             HStack {
@@ -268,6 +287,21 @@ struct DiaryListView: View {
         } else {
             await generateEntry(supplemental: false)
         }
+    }
+
+    /// Triggered when the user taps the daily local notification reminder.
+    /// Reuses the standard generation path, but only when today has no entry yet
+    /// (so a tap never silently overwrites an existing diary).
+    private func generateFromReminder() async {
+        guard !storageManager.entryExists(for: Date()) else {
+            print("[dAIry] Reminder tapped but today's entry already exists — skipping auto-generation")
+            return
+        }
+        guard isKeyConfigured else {
+            print("[dAIry] Reminder tapped but API key not configured — skipping auto-generation")
+            return
+        }
+        await generateEntry(supplemental: false)
     }
 
     private func generateEntry(supplemental: Bool) async {
