@@ -65,7 +65,8 @@ final class ChatService: ObservableObject {
 
     // MARK: - Constants
 
-    private let modelName = "gemini-2.5-flash"
+    /// Primary model first, fallback model second — see `GeminiModel`.
+    private let modelNames = GeminiModel.names
     /// Cap on tool round-trips per user message to avoid infinite loops.
     private let maxToolRoundTrips = 5
 
@@ -82,6 +83,10 @@ final class ChatService: ObservableObject {
 
     /// SDK chat session, lazily created on first message so tool/language config is current.
     private var chat: Chat?
+    /// The model name the current `chat` session was built with, so we can detect whether a
+    /// fallback retry is still possible (only retry once, and only if we haven't already
+    /// fallen back).
+    private var currentModelName: String?
 
     // MARK: - Init
 
@@ -102,60 +107,101 @@ final class ChatService: ObservableObject {
             throw ChatServiceError.apiKeyNotConfigured
         }
 
-        let chat = chat ?? makeChat(apiKey: apiKey)
-        self.chat = chat
+        if chat == nil {
+            currentModelName = modelNames[0]
+            chat = makeChat(apiKey: apiKey, modelName: modelNames[0])
+        }
 
         do {
-            var response = try await chat.sendMessage(message)
-
-            for roundTrip in 0..<maxToolRoundTrips {
-                let functionCalls = response.functionCalls
-                guard !functionCalls.isEmpty else {
-                    // Model returned a normal answer.
-                    guard let text = response.text, !text.isEmpty else {
-                        throw ChatServiceError.emptyResponse
-                    }
-                    return text
-                }
-
-                print("[dAIry] Chat round-trip \(roundTrip + 1): model requested \(functionCalls.count) function call(s)")
-
-                // Execute each requested function locally and collect responses.
-                var responseParts: [ModelContent.Part] = []
-                for call in functionCalls {
-                    print("[dAIry] Function call: \(call.name) args: \(call.args)")
-                    let result = execute(call)
-                    responseParts.append(.functionResponse(
-                        FunctionResponse(name: call.name, response: result)
-                    ))
-                }
-
-                response = try await chat.sendMessage([
-                    ModelContent(role: "function", parts: responseParts)
-                ])
-            }
-
-            // Exhausted round-trips: return any text the model produced, else error.
-            if let text = response.text, !text.isEmpty {
-                return text
-            }
-            throw ChatServiceError.toolLoopExceeded
+            return try await sendWithToolLoop(message)
         } catch let error as ChatServiceError {
             throw error
         } catch {
-            print("[dAIry] Chat error: \(error)")
-            throw ChatServiceError.networkError(error)
+            // Only fall back once, and only if we haven't already fallen back for this session.
+            guard GeminiErrorClassifier.shouldFallback(error),
+                  let modelUsed = currentModelName,
+                  modelUsed == modelNames[0],
+                  modelNames.count > 1 else {
+                print("[dAIry] Chat error: \(error)")
+                throw ChatServiceError.networkError(error)
+            }
+
+            let fallbackModelName = modelNames[1]
+            if GeminiErrorClassifier.isPromptBlocked(error) {
+                print("[dAIry] Chat prompt blocked on \(modelUsed), falling back to \(fallbackModelName)")
+            } else {
+                print("[dAIry] Chat rate limited on \(modelUsed), falling back to \(fallbackModelName)")
+            }
+            print("[dAIry] Warning: rebuilding chat session for fallback — conversation history will reset")
+
+            currentModelName = fallbackModelName
+            chat = makeChat(apiKey: apiKey, modelName: fallbackModelName)
+
+            do {
+                return try await sendWithToolLoop(message)
+            } catch let error as ChatServiceError {
+                throw error
+            } catch {
+                print("[dAIry] Chat error after fallback: \(error)")
+                throw ChatServiceError.networkError(error)
+            }
         }
+    }
+
+    /// Runs the tool-calling round-trip loop against the current `chat` session for one message.
+    private func sendWithToolLoop(_ message: String) async throws -> String {
+        guard let chat else {
+            throw ChatServiceError.networkError(
+                NSError(domain: "ChatService", code: -1)
+            )
+        }
+
+        var response = try await chat.sendMessage(message)
+
+        for roundTrip in 0..<maxToolRoundTrips {
+            let functionCalls = response.functionCalls
+            guard !functionCalls.isEmpty else {
+                // Model returned a normal answer.
+                guard let text = response.text, !text.isEmpty else {
+                    throw ChatServiceError.emptyResponse
+                }
+                return text
+            }
+
+            print("[dAIry] Chat round-trip \(roundTrip + 1): model requested \(functionCalls.count) function call(s)")
+
+            // Execute each requested function locally and collect responses.
+            var responseParts: [ModelContent.Part] = []
+            for call in functionCalls {
+                print("[dAIry] Function call: \(call.name) args: \(call.args)")
+                let result = execute(call)
+                responseParts.append(.functionResponse(
+                    FunctionResponse(name: call.name, response: result)
+                ))
+            }
+
+            response = try await chat.sendMessage([
+                ModelContent(role: "function", parts: responseParts)
+            ])
+        }
+
+        // Exhausted round-trips: return any text the model produced, else error.
+        if let text = response.text, !text.isEmpty {
+            return text
+        }
+        throw ChatServiceError.toolLoopExceeded
     }
 
     /// Resets the conversation history.
     func reset() {
         chat = nil
+        currentModelName = nil
     }
 
     // MARK: - Model / Tools Setup
 
-    private func makeChat(apiKey: String) -> Chat {
+    private func makeChat(apiKey: String, modelName: String) -> Chat {
+        print("[dAIry] Chat using model \(modelName)")
         let model = GenerativeModel(
             name: modelName,
             apiKey: apiKey,

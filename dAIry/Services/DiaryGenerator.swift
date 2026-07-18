@@ -47,6 +47,8 @@ final class DiaryGenerator: DiaryGenerating {
 
     private let apiKeyManager: APIKeyManaging
     private let maxRetries = 3
+    /// Primary model first, fallback model second — see `GeminiModel`.
+    private let modelNames = GeminiModel.names
     var language: AppLanguage = .english
 
     init(apiKeyManager: APIKeyManaging) {
@@ -157,13 +159,23 @@ final class DiaryGenerator: DiaryGenerating {
         )
 
         for attempt in 0..<maxRetries {
+            // Attempt 0 uses the primary model; once we've fallen back, stay on the fallback
+            // for any remaining attempts (index is clamped to the last entry in modelNames).
+            let modelName = modelNames[min(attempt, modelNames.count - 1)]
             do {
-                print("[dAIry] Gemini API attempt \(attempt + 1)/\(maxRetries)")
-                return try await callGemini(prompt: prompt, images: images)
+                print("[dAIry] Gemini API attempt \(attempt + 1)/\(maxRetries) using model \(modelName)")
+                return try await callGemini(prompt: prompt, images: images, modelName: modelName)
             } catch {
-                print("[dAIry] Attempt \(attempt + 1) failed: \(error)")
+                print("[dAIry] Attempt \(attempt + 1) (model \(modelName)) failed: \(error)")
                 lastError = error
+
                 if attempt < maxRetries - 1 {
+                    let nextModelName = modelNames[min(attempt + 1, modelNames.count - 1)]
+                    if GeminiErrorClassifier.isPromptBlocked(error) {
+                        print("[dAIry] Prompt blocked on \(modelName), falling back to \(nextModelName)")
+                    } else if GeminiErrorClassifier.isRateLimited(error) {
+                        print("[dAIry] Rate limited on \(modelName), falling back to \(nextModelName)")
+                    }
                     // Longer backoff: 2s, 4s, 8s, 16s
                     let delay = UInt64(pow(2.0, Double(attempt + 1))) * 1_000_000_000
                     print("[dAIry] Retrying in \(Int(pow(2.0, Double(attempt + 1))))s...")
@@ -174,13 +186,13 @@ final class DiaryGenerator: DiaryGenerating {
         throw DiaryGeneratorError.networkError(lastError)
     }
 
-    private func callGemini(prompt: String, images: [Data]) async throws -> String {
+    private func callGemini(prompt: String, images: [Data], modelName: String) async throws -> String {
         guard let apiKey = apiKeyManager.getKey() else {
             throw DiaryGeneratorError.apiKeyNotConfigured
         }
 
         let model = GenerativeModel(
-            name: "gemini-2.5-flash",
+            name: modelName,
             apiKey: apiKey,
             safetySettings: SafetySetting.permissive
         )
