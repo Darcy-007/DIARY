@@ -21,17 +21,9 @@ struct DiaryListView: View {
     @State private var generationError: String?
     @State private var showErrorAlert: Bool = false
     @State private var isKeyConfigured: Bool = false
-    @State private var searchText: String = ""
     @State private var showDatePicker: Bool = false
     @State private var selectedDate: Date = Date()
     @State private var navigateToEntryId: UUID? = nil
-
-    private var filteredEntries: [DiaryEntry] {
-        if searchText.isEmpty {
-            return entries
-        }
-        return entries.filter { $0.text.localizedCaseInsensitiveContains(searchText) }
-    }
 
     private var datesWithEntries: Set<DateComponents> {
         let calendar = Calendar.current
@@ -55,15 +47,34 @@ struct DiaryListView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    NavigationLink {
-                        SettingsView(
-                            apiKeyManager: apiKeyManager,
-                            scheduler: scheduler,
-                            languageManager: languageManager,
-                            notificationManager: notificationManager
-                        )
-                    } label: {
-                        Image(systemName: "gear")
+                    HStack {
+                        Button { showDatePicker = true } label: {
+                            Image(systemName: "calendar")
+                        }
+
+                        NavigationLink {
+                            ChatView(
+                                chatService: ChatService(
+                                    apiKeyManager: apiKeyManager,
+                                    storage: storageManager
+                                ),
+                                languageManager: languageManager,
+                                apiKeyManager: apiKeyManager
+                            )
+                        } label: {
+                            Image(systemName: "bubble.left.and.bubble.right")
+                        }
+
+                        NavigationLink {
+                            SettingsView(
+                                apiKeyManager: apiKeyManager,
+                                scheduler: scheduler,
+                                languageManager: languageManager,
+                                notificationManager: notificationManager
+                            )
+                        } label: {
+                            Image(systemName: "gear")
+                        }
                     }
                 }
 
@@ -168,48 +179,20 @@ struct DiaryListView: View {
 
     private var mainContent: some View {
         VStack(spacing: 0) {
-            // Custom search bar with calendar icon
-            HStack(spacing: 10) {
-                HStack {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundStyle(.secondary)
-                    TextField("Search diary entries", text: $searchText)
-                        .autocorrectionDisabled()
-                    if !searchText.isEmpty {
-                        Button { searchText = "" } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-                .padding(8)
-                .background(Color(.systemGray6))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-
-                Button { showDatePicker = true } label: {
-                    Image(systemName: "calendar")
-                        .font(.title3)
-                }
-            }
-            .padding(.horizontal)
-            .padding(.vertical, 8)
-
             // API key missing banner
             if !isKeyConfigured {
                 apiKeyBanner
             }
 
             List {
-                if filteredEntries.isEmpty {
+                if entries.isEmpty {
                     ContentUnavailableView(
                         "No Diary Entries",
                         systemImage: "book.closed",
-                        description: Text(searchText.isEmpty
-                            ? "Tap Generate Diary to create your first entry."
-                            : "No entries match your search.")
+                        description: Text("Tap Generate Diary to create your first entry.")
                     )
                 } else {
-                    ForEach(filteredEntries, id: \.id) { entry in
+                    ForEach(entries, id: \.id) { entry in
                         NavigationLink(value: entry.id) {
                             DiaryEntryRow(entry: entry)
                         }

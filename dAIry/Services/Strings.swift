@@ -114,6 +114,19 @@ struct L10n {
     var language: String { lang.localizedString("Language", zh: "语言") }
     var apiKeySaved: String { lang.localizedString("API key saved successfully.", zh: "API密钥保存成功。") }
 
+    // MARK: - Chat
+    var chatTitle: String { lang.localizedString("Chat", zh: "对话") }
+    var chatPlaceholder: String { lang.localizedString("Ask about your diary…", zh: "询问你的日记…") }
+    var chatEmptyHint: String { lang.localizedString(
+        "Ask me about your diary — try \"What did I do last weekend?\"",
+        zh: "向我询问你的日记——试试\"我上周末做了什么？\""
+    )}
+    var chatNeedsApiKey: String { lang.localizedString(
+        "Add your Gemini API key in Settings to start chatting about your diary.",
+        zh: "请在设置中添加你的Gemini API密钥，即可开始对话。"
+    )}
+    var send: String { lang.localizedString("Send", zh: "发送") }
+
     // MARK: - Notifications
     var reminderTitle: String { lang.localizedString("Your dAIry is ready", zh: "你的日记已准备好") }
     var reminderBody: String { lang.localizedString(

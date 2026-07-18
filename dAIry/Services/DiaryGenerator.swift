@@ -181,7 +181,8 @@ final class DiaryGenerator: DiaryGenerating {
 
         let model = GenerativeModel(
             name: "gemini-2.5-flash",
-            apiKey: apiKey
+            apiKey: apiKey,
+            safetySettings: SafetySetting.permissive
         )
 
         // Build multimodal parts: text + images
